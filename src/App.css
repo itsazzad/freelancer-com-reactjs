@@ -26,3 +26,17 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+ul.pagination {
+  display: inline-block;
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+ul.pagination li {
+  display: inline-block;
+}
+
+ul.pagination .break a {
+  cursor: default;
+}
