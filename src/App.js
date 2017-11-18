@@ -39,6 +39,26 @@ class Home extends Component {
     }
 }
 
+const work = {
+    projects: function(){
+        return this.data('https://www.freelancer.com/api/projects/0.1/projects/active');
+    },
+    contests: function(){
+        return this.data('https://www.freelancer.com/api/contests/0.1/contests/?statuses[]=active');
+    },
+    data: function(url){
+        return axios.get(url)
+            .then(function (response) {
+                console.log(response);
+                return response;
+            })
+            .catch(function (error) {
+                console.error(error);
+                return false;
+            });
+    },
+};
+
 class Projects extends Component {
     constructor(props) {
         super(props);
@@ -48,16 +68,9 @@ class Projects extends Component {
     }
 
     componentDidMount() {
-        axios.get('https://www.freelancer.com/api/projects/0.1/projects/active')
-            .then(function (response) {
-                console.log(response);
-                this.setState(
-                    {projects: response.result.projects}
-                );
-            })
-            .catch(function (error) {
-                console.error(error);
-            });
+        this.setState(
+            {projects: work.projects()}
+        );
     }
 
     render() {
@@ -78,16 +91,9 @@ class Contests extends Component {
     }
 
     componentDidMount() {
-        axios.get('https://www.freelancer.com/api/contests/0.1/contests/?statuses[]=active')
-            .then(function (response) {
-                console.log(response);
-                this.setState(
-                    {contests: response.result.contests}
-                );
-            })
-            .catch(function (error) {
-                console.error(error);
-            });
+        this.setState(
+            {projects: work.contests()}
+        );
     }
 
     render() {
@@ -98,6 +104,5 @@ class Contests extends Component {
         );
     }
 }
-
 
 export default App;
