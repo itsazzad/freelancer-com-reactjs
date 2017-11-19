@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
     BrowserRouter as Router,
     Route,
@@ -8,7 +8,7 @@ import axios from 'axios';
 import ReactPaginate from 'react-paginate';
 import './App.css';
 
-const LIMIT = 1;
+const LIMIT = 10;
 const MINIMUM_AGE = 30 * 60;
 
 class App extends Component {
@@ -35,11 +35,24 @@ class App extends Component {
 class Projects extends Component {
     constructor(props) {
         super(props);
+        this.invalidEntries = 0;
         this.state = {
             projects: [],
             offset: 0
         };
     }
+
+    isMaturedEnough = (project) => {
+        return project.submitdate < (Date.now() - MINIMUM_AGE);
+    };
+
+    filterByCriteria = (project) => {
+        if (this.isMaturedEnough(project)) {
+            return true;
+        }
+        this.invalidEntries++;
+        return false;
+    };
 
     loadProjectsFromServer() {
         const url = `https://www.freelancer.com/api/projects/0.1/projects/active?include_contests=true&compact=true&limit=${LIMIT}&offset=${this.state.offset}`;
@@ -47,7 +60,7 @@ class Projects extends Component {
             .then((response) => {
                 const data = response.data;
                 if (data.status === 'success') {
-                    const projects = data.result.projects;
+                    const projects = data.result.projects.filter(this.filterByCriteria);
                     const pageCount = Math.ceil(data.result.total_count / LIMIT);
                     this.setState({
                         projects,
@@ -70,20 +83,13 @@ class Projects extends Component {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
 
-        this.setState({offset: offset}, () => {
+        this.setState({ offset: offset }, () => {
             this.loadProjectsFromServer();
         });
     };
 
     render() {
-        let jobList = [];
-        for (let i = 0; i < LIMIT; i++) {
-            const job = this.state.projects[i];
-            if (job) {
-                jobList.push(job);
-            }
-        }
-        let jobNodes = jobList.map(function (jobNode, index) {
+        let jobList = this.state.projects.map(function (jobNode, index) {
             return (
                 <tr key={jobNode.id}>
                     <td><a href={`https://www.freelancer.com/projects/`}>{jobNode.title}</a></td>
@@ -110,7 +116,7 @@ class Projects extends Component {
                                 </tr>
                                 </thead>
                                 <tbody>
-                                {jobNodes}
+                                {jobList}
                                 </tbody>
                             </table>
                         </div>
