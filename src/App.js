@@ -9,6 +9,7 @@ import ReactPaginate from 'react-paginate';
 import './App.css';
 
 const LIMIT = 1;
+const MINIMUM_AGE = 30 * 60;
 
 class App extends Component {
     render() {
@@ -87,7 +88,7 @@ class Projects extends Component {
                 <tr key={jobNode.id}>
                     <td><a href={`https://www.freelancer.com/projects/`}>{jobNode.title}</a></td>
                     <td>{jobNode.bid_stats.bid_count}/{jobNode.bid_stats.bid_avg}</td>
-                    <td>{jobNode.time_submitted}</td>
+                    <td>{jobNode.submitdate}</td>
                     <td>{jobNode.currency.code} {jobNode.budget.minimum} - {jobNode.budget.maximum}</td>
                 </tr>
             );
