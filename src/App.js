@@ -8,8 +8,8 @@ import axios from 'axios';
 import ReactPaginate from 'react-paginate';
 import './App.css';
 
-const LIMIT = 10;
-const MINIMUM_AGE = 30 * 60;
+const LIMIT = 100;
+const MINIMUM_AGE = 24 * 60 * 60 / 50;
 
 class App extends Component {
     render() {
@@ -38,12 +38,13 @@ class Projects extends Component {
         this.invalidEntries = 0;
         this.state = {
             projects: [],
-            offset: 0
+            offset: 0,
         };
     }
 
     isMaturedEnough = (project) => {
-        return project.submitdate < (Date.now() - MINIMUM_AGE);
+        console.error(project.submitdate, parseInt(Date.now()/1000, 0), parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
+        return project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0);
     };
 
     filterByCriteria = (project) => {
@@ -55,6 +56,7 @@ class Projects extends Component {
     };
 
     loadProjectsFromServer() {
+        this.invalidEntries = 0;
         const url = `https://www.freelancer.com/api/projects/0.1/projects/active?include_contests=true&compact=true&limit=${LIMIT}&offset=${this.state.offset}`;
         axios.get(url)
             .then((response) => {
@@ -92,7 +94,8 @@ class Projects extends Component {
         let jobList = this.state.projects.map(function (jobNode, index) {
             return (
                 <tr key={jobNode.id}>
-                    <td><a href={`https://www.freelancer.com/projects/`}>{jobNode.title}</a></td>
+                    <td>{index + 1}</td>
+                    <td><a href={`https://www.freelancer.com/projects/${jobNode.seo_url}`}>{jobNode.title}</a></td>
                     <td>{jobNode.bid_stats.bid_count}/{jobNode.bid_stats.bid_avg}</td>
                     <td>{jobNode.submitdate}</td>
                     <td>{jobNode.currency.code} {jobNode.budget.minimum} - {jobNode.budget.maximum}</td>
@@ -109,6 +112,7 @@ class Projects extends Component {
                             <table className="table table-striped">
                                 <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>PROJECT/CONTEST</th>
                                     <th>BIDS/ENTRIES</th>
                                     <th>STARTED</th>
