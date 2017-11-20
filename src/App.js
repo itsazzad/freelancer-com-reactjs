@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
     BrowserRouter as Router,
     Route,
@@ -17,7 +17,6 @@ const COUNTRIES = [
     'li',
     'qa',
 ];
-let invalidEntries = 0;
 
 class App extends Component {
     render() {
@@ -44,16 +43,19 @@ class Filter {
     constructor(projects) {
         this.projects = projects;
         this.invalidEntries = 0;
-        this.projects = this.projects.filter(this.init);
+        this.projects = projects.filter((project) => {
+            return this.start(project);
+        });
     }
 
-    isMaturedEnough(project) {
+    static isMaturedEnough(project) {
         console.error(project.submitdate, parseInt(Date.now() / 1000, 0), parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
-        return project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0);
+        return true;
+        return (project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
     }
 
-    init(project) {
-        if (!this.isMaturedEnough(project)) {
+    start(project) {
+        if (!this.constructor.isMaturedEnough(project)) {
             this.invalidEntries++;
             return false;
         }
@@ -82,7 +84,6 @@ class Projects extends Component {
     }
 
     loadProjectsFromServer() {
-        invalidEntries = 0;
         let url = `https://www.freelancer.com/api/projects/0.1/projects/active?`;
         url += `include_contests=true&`;
         url += `compact=true&`;
@@ -97,16 +98,16 @@ class Projects extends Component {
             .then(axios.spread((projectsInOrder, projectsInReverseOrder) => {
                 const projectsData = merge(projectsInOrder, projectsInReverseOrder);
                 if (projectsData.status === 200) {
-                    const data = projectsData.data;
-                    console.error(data.result.projects);
-                    // const projects = new Filter(data.result.projects).projects;
-                    const projects = data.result.projects;
-                    const pageCount = Math.ceil(data.result.total_count / LIMIT);
+                    let projects = projectsData.data;
+                    const pageCount = Math.ceil(projects.result.total_count / LIMIT);
+                    console.error(projects.result.projects);
+                    projects = new Filter(projects.result.projects);
+                    console.error('invalidEntries: ', projects.invalidEntries);
+                    projects = projects.projects;
                     this.setState({
                         projects,
                         pageCount,
                     });
-                    console.error('invalidEntries: ', invalidEntries);
                 } else {
                     console.error(projectsData.status);
                 }
@@ -124,7 +125,7 @@ class Projects extends Component {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
 
-        this.setState({offset: offset}, () => {
+        this.setState({ offset: offset }, () => {
             this.loadProjectsFromServer();
         });
     };
