@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {
     BrowserRouter as Router,
     Route,
@@ -6,10 +6,18 @@ import {
 } from 'react-router-dom';
 import axios from 'axios';
 import ReactPaginate from 'react-paginate';
+import merge from 'deepmerge';
 import './App.css';
 
-const LIMIT = 100;
+const LIMIT = 1;
 const MINIMUM_AGE = 24 * 60 * 60 / 50;
+const COUNTRIES = [
+    'no',
+    'lu',
+    'li',
+    'qa',
+];
+let invalidEntries = 0;
 
 class App extends Component {
     render() {
@@ -32,46 +40,77 @@ class App extends Component {
     }
 }
 
+class Filter {
+    constructor(projects) {
+        this.projects = projects;
+        this.invalidEntries = 0;
+        this.projects = this.projects.filter(this.init);
+    }
+
+    isMaturedEnough(project) {
+        console.error(project.submitdate, parseInt(Date.now() / 1000, 0), parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
+        return project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0);
+    }
+
+    init(project) {
+        if (!this.isMaturedEnough(project)) {
+            this.invalidEntries++;
+            return false;
+        }
+        return true;
+    }
+}
+
+class Request {
+    static projects(url) {
+        return axios.get(url);
+    }
+
+    static projectsInReverseOrder(url) {
+        return axios.get(url + 'reverse_sort=true&');
+    }
+}
+
 class Projects extends Component {
     constructor(props) {
         super(props);
-        this.invalidEntries = 0;
         this.state = {
+            users: {},
             projects: [],
             offset: 0,
         };
     }
 
-    isMaturedEnough = (project) => {
-        console.error(project.submitdate, parseInt(Date.now()/1000, 0), parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
-        return project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0);
-    };
-
-    filterByCriteria = (project) => {
-        if (this.isMaturedEnough(project)) {
-            return true;
-        }
-        this.invalidEntries++;
-        return false;
-    };
-
     loadProjectsFromServer() {
-        this.invalidEntries = 0;
-        const url = `https://www.freelancer.com/api/projects/0.1/projects/active?include_contests=true&compact=true&limit=${LIMIT}&offset=${this.state.offset}`;
-        axios.get(url)
-            .then((response) => {
-                const data = response.data;
-                if (data.status === 'success') {
-                    const projects = data.result.projects.filter(this.filterByCriteria);
+        invalidEntries = 0;
+        let url = `https://www.freelancer.com/api/projects/0.1/projects/active?`;
+        url += `include_contests=true&`;
+        url += `compact=true&`;
+        url += `user_details=true&`;
+        url += `limit=${LIMIT}&`;
+        url += `offset=${this.state.offset}&`;
+        for (let country of COUNTRIES) {
+            url += `countries[]=${country}&`;
+        }
+
+        axios.all([Request.projects(url), Request.projectsInReverseOrder(url)])
+            .then(axios.spread((projectsInOrder, projectsInReverseOrder) => {
+                const projectsData = merge(projectsInOrder, projectsInReverseOrder);
+                if (projectsData.status === 200) {
+                    const data = projectsData.data;
+                    console.error(data.result.projects);
+                    // const projects = new Filter(data.result.projects).projects;
+                    const projects = data.result.projects;
                     const pageCount = Math.ceil(data.result.total_count / LIMIT);
                     this.setState({
                         projects,
-                        pageCount
+                        pageCount,
                     });
+                    console.error('invalidEntries: ', invalidEntries);
                 } else {
-                    console.error(data.status);
+                    console.error(projectsData.status);
                 }
-            })
+            }))
             .catch((error) => {
                 console.error(error);
             });
@@ -85,7 +124,7 @@ class Projects extends Component {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
 
-        this.setState({ offset: offset }, () => {
+        this.setState({offset: offset}, () => {
             this.loadProjectsFromServer();
         });
     };
@@ -106,7 +145,9 @@ class Projects extends Component {
             <div className="container-fluid">
                 <div className="row">
                     <main role="main" className="col-sm-12 ml-sm-auto col-md-12 pt-3">
-                        <h1>Dashboard</h1>
+                        <h1>Dashboard
+                            <small>Filtered out</small>
+                        </h1>
                         <div className="table-responsive">
 
                             <table className="table table-striped">
