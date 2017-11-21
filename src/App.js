@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {
     BrowserRouter as Router,
     Route,
@@ -7,16 +7,12 @@ import {
 import axios from 'axios';
 import ReactPaginate from 'react-paginate';
 import merge from 'deepmerge';
+import Select from 'react-select';
 import './App.css';
+import 'react-select/dist/react-select.css';
 
-const LIMIT = 1;
+const LIMIT = 100;
 const MINIMUM_AGE = 24 * 60 * 60 / 50;
-const COUNTRIES = [
-    'no',
-    'lu',
-    'li',
-    'qa',
-];
 
 class App extends Component {
     render() {
@@ -49,13 +45,27 @@ class Filter {
     }
 
     static isMaturedEnough(project) {
-        console.error(project.submitdate, parseInt(Date.now() / 1000, 0), parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
-        return true;
-        return (project.submitdate < parseInt(Date.now() / 1000 - MINIMUM_AGE, 0));
+        return (project.time_submitted < parseInt(Date.now() / 1000 - MINIMUM_AGE, 10));
+    }
+
+    static isActive(project) {
+        return project.status.toLowerCase() === 'active';
+    }
+
+    static isNotLocal(project) {
+        return !project.local;
     }
 
     start(project) {
+        if (!this.constructor.isActive(project)) {
+            this.invalidEntries++;
+            return false;
+        }
         if (!this.constructor.isMaturedEnough(project)) {
+            this.invalidEntries++;
+            return false;
+        }
+        if (!this.constructor.isNotLocal(project)) {
             this.invalidEntries++;
             return false;
         }
@@ -71,6 +81,10 @@ class Request {
     static projectsInReverseOrder(url) {
         return axios.get(url + 'reverse_sort=true&');
     }
+
+    static countries(source) {
+        return axios.get(`./countries/${source}.json`);
+    }
 }
 
 class Projects extends Component {
@@ -80,8 +94,27 @@ class Projects extends Component {
             users: {},
             projects: [],
             offset: 0,
+            isCountriesLoaded: false,
+            countries: [],
+            freelancerCountries: [],
+            selectedCountries: [],
         };
     }
+
+    loadCountries = () => {
+        return axios.all([Request.countries('restcountries'), Request.countries('freelancer')])
+            .then(axios.spread((countries, freelancerCountries) => {
+                this.setState({
+                    isCountriesLoaded: true,
+                    countries: countries.data,
+                    freelancerCountries: freelancerCountries.data.result.countries,
+                });
+                return freelancerCountries.data.result.countries;
+            }))
+            .catch((error) => {
+                console.error(error);
+            });
+    };
 
     loadProjectsFromServer() {
         let url = `https://www.freelancer.com/api/projects/0.1/projects/active?`;
@@ -90,8 +123,8 @@ class Projects extends Component {
         url += `user_details=true&`;
         url += `limit=${LIMIT}&`;
         url += `offset=${this.state.offset}&`;
-        for (let country of COUNTRIES) {
-            url += `countries[]=${country}&`;
+        for (let country of this.state.selectedCountries) {
+            url += `countries[]=${country.code.toLowerCase()}&`;
         }
 
         axios.all([Request.projects(url), Request.projectsInReverseOrder(url)])
@@ -100,10 +133,15 @@ class Projects extends Component {
                 if (projectsData.status === 200) {
                     let projects = projectsData.data;
                     const pageCount = Math.ceil(projects.result.total_count / LIMIT);
-                    console.error(projects.result.projects);
                     projects = new Filter(projects.result.projects);
                     console.error('invalidEntries: ', projects.invalidEntries);
                     projects = projects.projects;
+                    projects.sort(function (project0, project1) {
+                        const count0 = (project0.entry_count ? project0.entry_count : project0.bid_stats.bid_count);
+                        const count1 = (project1.entry_count ? project1.entry_count : project1.bid_stats.bid_count);
+                        return count0 - count1;
+                    });
+
                     this.setState({
                         projects,
                         pageCount,
@@ -118,16 +156,21 @@ class Projects extends Component {
     }
 
     componentDidMount() {
-        this.loadProjectsFromServer();
+        this.loadCountries();
+        // this.loadProjectsFromServer();
     }
 
     handlePageClick = (data) => {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
 
-        this.setState({ offset: offset }, () => {
+        this.setState({offset: offset}, () => {
             this.loadProjectsFromServer();
         });
+    };
+
+    selectCountry = (selectedCountries) => {
+        this.setState({selectedCountries});
     };
 
     render() {
@@ -136,9 +179,11 @@ class Projects extends Component {
                 <tr key={jobNode.id}>
                     <td>{index + 1}</td>
                     <td><a href={`https://www.freelancer.com/projects/${jobNode.seo_url}`}>{jobNode.title}</a></td>
-                    <td>{jobNode.bid_stats.bid_count}/{jobNode.bid_stats.bid_avg}</td>
-                    <td>{jobNode.submitdate}</td>
-                    <td>{jobNode.currency.code} {jobNode.budget.minimum} - {jobNode.budget.maximum}</td>
+                    <td>{jobNode.entry_count ? jobNode.entry_count : jobNode.bid_stats.bid_count}
+                        {' X '} {jobNode.currency.code} {jobNode.entry_count ? 'ϕ' : parseInt(jobNode.bid_stats.bid_avg, 10)}</td>
+                    <td>{(new Date(jobNode.time_submitted * 1000)).toISOString()}</td>
+                    <td>{jobNode.currency.code} {jobNode.prize ? jobNode.prize : jobNode.budget.minimum}
+                        - {jobNode.prize ? jobNode.prize : jobNode.budget.maximum}</td>
                 </tr>
             );
         });
@@ -146,11 +191,34 @@ class Projects extends Component {
             <div className="container-fluid">
                 <div className="row">
                     <main role="main" className="col-sm-12 ml-sm-auto col-md-12 pt-3">
-                        <h1>Dashboard
-                            <small>Filtered out</small>
-                        </h1>
-                        <div className="table-responsive">
+                        <div className="row">
+                            {this.state.isCountriesLoaded && <Select
+                                multi={true}
+                                name="countries"
+                                value={this.state.selectedCountries}
+                                labelKey="name"
+                                valueKey="code"
+                                onChange={this.selectCountry}
+                                options={this.state.freelancerCountries}
+                                closeOnSelect={false}
+                            />}
+                            <button onClick={() => this.loadProjectsFromServer()}>Search</button>
+                        </div>
+                        <div className="row">
+                            <ReactPaginate previousLabel={"previous"}
+                                           nextLabel={"next"}
+                                           breakLabel={<a href="">...</a>}
+                                           breakClassName={"break-me"}
+                                           pageCount={this.state.pageCount}
+                                           marginPagesDisplayed={2}
+                                           pageRangeDisplayed={5}
+                                           onPageChange={this.handlePageClick}
+                                           containerClassName={"pagination"}
+                                           subContainerClassName={"pages pagination"}
+                                           activeClassName={"active"}/>
 
+                        </div>
+                        <div className="table-responsive">
                             <table className="table table-striped">
                                 <thead>
                                 <tr>
@@ -166,21 +234,21 @@ class Projects extends Component {
                                 </tbody>
                             </table>
                         </div>
-                    </main>
-                </div>
-                <div className="row">
-                    <ReactPaginate previousLabel={"previous"}
-                                   nextLabel={"next"}
-                                   breakLabel={<a href="">...</a>}
-                                   breakClassName={"break-me"}
-                                   pageCount={this.state.pageCount}
-                                   marginPagesDisplayed={2}
-                                   pageRangeDisplayed={5}
-                                   onPageChange={this.handlePageClick}
-                                   containerClassName={"pagination"}
-                                   subContainerClassName={"pages pagination"}
-                                   activeClassName={"active"}/>
+                        <div className="row">
+                            <ReactPaginate previousLabel={"previous"}
+                                           nextLabel={"next"}
+                                           breakLabel={<a href="">...</a>}
+                                           breakClassName={"break-me"}
+                                           pageCount={this.state.pageCount}
+                                           marginPagesDisplayed={2}
+                                           pageRangeDisplayed={5}
+                                           onPageChange={this.handlePageClick}
+                                           containerClassName={"pagination"}
+                                           subContainerClassName={"pages pagination"}
+                                           activeClassName={"active"}/>
 
+                        </div>
+                    </main>
                 </div>
             </div>
         );
