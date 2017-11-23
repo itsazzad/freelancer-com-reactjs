@@ -23,7 +23,7 @@ class App extends Component {
                         <div className="collapse navbar-collapse" id="navbarsExampleDefault">
                             <ul className="navbar-nav mr-auto">
                                 <li className="nav-item">
-                                    <Link to="/" className="nav-link">Home</Link>
+                                    {/*<Link to="/" className="nav-link">Home</Link>*/}
                                 </li>
                             </ul>
                             <Route exact path="/" component={Projects}/>
@@ -200,9 +200,11 @@ class Projects extends Component {
                                 valueKey="code"
                                 onChange={this.selectCountry}
                                 options={this.state.freelancerCountries}
-                                closeOnSelect={false}
+                                closeOnSelect={true}
                             />}
-                            <button onClick={() => this.loadProjectsFromServer()}>Search</button>
+                            <button type="button" class="btn btn-info" onClick={() => this.loadProjectsFromServer()}>
+                                Search
+                            </button>
                         </div>
                         <div className="row">
                             <ReactPaginate previousLabel={"previous"}

@@ -40,3 +40,8 @@ ul.pagination li {
 ul.pagination .break a {
   cursor: default;
 }
+
+.Select {
+  z-index: 9;
+}
+
