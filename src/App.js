@@ -2,7 +2,6 @@ import React, {Component} from 'react';
 import {
     BrowserRouter as Router,
     Route,
-    Link
 } from 'react-router-dom';
 import axios from 'axios';
 import ReactPaginate from 'react-paginate';
@@ -21,11 +20,11 @@ class App extends Component {
                 <header>
                     <nav className="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
                         <div className="collapse navbar-collapse" id="navbarsExampleDefault">
-                            <ul className="navbar-nav mr-auto">
-                                <li className="nav-item">
+                            {/*<ul className="navbar-nav mr-auto">*/}
+                                {/*<li className="nav-item">*/}
                                     {/*<Link to="/" className="nav-link">Home</Link>*/}
-                                </li>
-                            </ul>
+                                {/*</li>*/}
+                            {/*</ul>*/}
                             <Route exact path="/" component={Projects}/>
                         </div>
                     </nav>
@@ -44,10 +43,6 @@ class Filter {
         });
     }
 
-    static isMaturedEnough(project) {
-        return (project.time_submitted < parseInt(Date.now() / 1000 - MINIMUM_AGE, 10));
-    }
-
     static isActive(project) {
         return project.status.toLowerCase() === 'active';
     }
@@ -56,16 +51,23 @@ class Filter {
         return !project.local;
     }
 
+    static isMaturedEnough(project) {
+        return (project.time_submitted < parseInt(Date.now() / 1000 - MINIMUM_AGE, 10));
+    }
+
     start(project) {
         if (!this.constructor.isActive(project)) {
-            this.invalidEntries++;
-            return false;
-        }
-        if (!this.constructor.isMaturedEnough(project)) {
+            console.error('closed');
             this.invalidEntries++;
             return false;
         }
         if (!this.constructor.isNotLocal(project)) {
+            console.error('local');
+            this.invalidEntries++;
+            return false;
+        }
+        if (!this.constructor.isMaturedEnough(project)) {
+            console.error('new');
             this.invalidEntries++;
             return false;
         }
@@ -131,9 +133,9 @@ class Projects extends Component {
             .then(axios.spread((projectsInOrder, projectsInReverseOrder) => {
                 const projectsData = merge(projectsInOrder, projectsInReverseOrder);
                 if (projectsData.status === 200) {
-                    let projects = projectsData.data;
-                    const pageCount = Math.ceil(projects.result.total_count / LIMIT);
-                    projects = new Filter(projects.result.projects);
+                    const data = projectsData.data;
+                    const pageCount = Math.ceil(data.result.total_count / LIMIT);
+                    let projects = new Filter(data.result.projects);
                     console.error('invalidEntries: ', projects.invalidEntries);
                     projects = projects.projects;
                     projects.sort(function (project0, project1) {
@@ -141,10 +143,12 @@ class Projects extends Component {
                         const count1 = (project1.entry_count ? project1.entry_count : project1.bid_stats.bid_count);
                         return count0 - count1;
                     });
+                    const users = data.result.users;
 
                     this.setState({
                         projects,
                         pageCount,
+                        users,
                     });
                 } else {
                     console.error(projectsData.status);
@@ -157,7 +161,6 @@ class Projects extends Component {
 
     componentDidMount() {
         this.loadCountries();
-        // this.loadProjectsFromServer();
     }
 
     handlePageClick = (data) => {
@@ -174,10 +177,13 @@ class Projects extends Component {
     };
 
     render() {
-        let jobList = this.state.projects.map(function (jobNode, index) {
+        let jobList = this.state.projects.map((jobNode, index) => {
             return (
                 <tr key={jobNode.id}>
                     <td>{index + 1}</td>
+                    <td>
+                        {this.state.users[jobNode.owner_id].location.country.name}
+                    </td>
                     <td><a href={`https://www.freelancer.com/projects/${jobNode.seo_url}`}>{jobNode.title}</a></td>
                     <td>{jobNode.entry_count ? jobNode.entry_count : jobNode.bid_stats.bid_count}
                         {' X '} {jobNode.currency.code} {jobNode.entry_count ? 'ϕ' : parseInt(jobNode.bid_stats.bid_avg, 10)}</td>
@@ -192,6 +198,14 @@ class Projects extends Component {
                 <div className="row">
                     <main role="main" className="col-sm-12 ml-sm-auto col-md-12 pt-3">
                         <div className="row">
+                            Filters:
+                            <ul>
+                                <li>Active</li>
+                                <li>Posted at-least half an hour ago</li>
+                                <li>Is not local</li>
+                            </ul>
+                        </div>
+                        <div className="row">
                             {this.state.isCountriesLoaded && <Select
                                 multi={true}
                                 name="countries"
@@ -202,7 +216,8 @@ class Projects extends Component {
                                 options={this.state.freelancerCountries}
                                 closeOnSelect={true}
                             />}
-                            <button type="button" class="btn btn-info" onClick={() => this.loadProjectsFromServer()}>
+                            <button type="button" className="btn btn-info"
+                                    onClick={() => this.loadProjectsFromServer()}>
                                 Search
                             </button>
                         </div>
@@ -225,6 +240,7 @@ class Projects extends Component {
                                 <thead>
                                 <tr>
                                     <th>#</th>
+                                    <th>C</th>
                                     <th>PROJECT/CONTEST</th>
                                     <th>BIDS/ENTRIES</th>
                                     <th>STARTED</th>
