@@ -134,7 +134,7 @@ class Projects extends Component {
                 const projectsData = merge(projectsInOrder, projectsInReverseOrder);
                 if (projectsData.status === 200) {
                     const data = projectsData.data;
-                    const pageCount = Math.ceil(data.result.total_count / LIMIT);
+                    const pageCount = Math.ceil((data.result.total_count / LIMIT)/2);
                     let projects = new Filter(data.result.projects);
                     console.error('invalidEntries: ', projects.invalidEntries);
                     projects = projects.projects;
