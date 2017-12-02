@@ -1,4 +1,4 @@
-import React, {Component} from 'react';
+import React, { Component } from 'react';
 import {
     BrowserRouter as Router,
     Route,
@@ -7,6 +7,7 @@ import axios from 'axios';
 import ReactPaginate from 'react-paginate';
 import merge from 'deepmerge';
 import Select from 'react-select';
+import { Checkbox, CheckboxGroup } from 'react-checkbox-group';
 import './App.css';
 import 'react-select/dist/react-select.css';
 
@@ -20,11 +21,6 @@ class App extends Component {
                 <header>
                     <nav className="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
                         <div className="collapse navbar-collapse" id="navbarsExampleDefault">
-                            {/*<ul className="navbar-nav mr-auto">*/}
-                                {/*<li className="nav-item">*/}
-                                    {/*<Link to="/" className="nav-link">Home</Link>*/}
-                                {/*</li>*/}
-                            {/*</ul>*/}
                             <Route exact path="/" component={Projects}/>
                         </div>
                     </nav>
@@ -100,8 +96,15 @@ class Projects extends Component {
             countries: [],
             freelancerCountries: [],
             selectedCountries: [],
+            projectTypes: ['fixed', 'hourly', 'contests'],
         };
-    }
+    };
+
+    changedProjectTypes = (projectTypes) => {
+        this.setState({
+            projectTypes
+        });
+    };
 
     loadCountries = () => {
         return axios.all([Request.countries('restcountries'), Request.countries('freelancer')])
@@ -120,7 +123,15 @@ class Projects extends Component {
 
     loadProjectsFromServer() {
         let url = `https://www.freelancer.com/api/projects/0.1/projects/active?`;
-        url += `include_contests=true&`;
+        if (this.state.projectTypes.includes('fixed')) {
+            url += `project_types[]=fixed&`;
+        }
+        if (this.state.projectTypes.includes('hourly')) {
+            url += `project_types[]=hourly&`;
+        }
+        if (this.state.projectTypes.includes('contests')) {
+            url += `include_contests=true&`;
+        }
         url += `compact=true&`;
         url += `user_details=true&`;
         url += `limit=${LIMIT}&`;
@@ -134,7 +145,7 @@ class Projects extends Component {
                 const projectsData = merge(projectsInOrder, projectsInReverseOrder);
                 if (projectsData.status === 200) {
                     const data = projectsData.data;
-                    const pageCount = Math.ceil((data.result.total_count / LIMIT)/2);
+                    const pageCount = Math.ceil((data.result.total_count / LIMIT) / 2);
                     let projects = new Filter(data.result.projects);
                     console.error('invalidEntries: ', projects.invalidEntries);
                     projects = projects.projects;
@@ -167,13 +178,13 @@ class Projects extends Component {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
 
-        this.setState({offset: offset}, () => {
+        this.setState({ offset: offset }, () => {
             this.loadProjectsFromServer();
         });
     };
 
     selectCountry = (selectedCountries) => {
-        this.setState({selectedCountries});
+        this.setState({ selectedCountries });
     };
 
     render() {
@@ -194,17 +205,17 @@ class Projects extends Component {
             );
         });
         return (
-            <div className="container-fluid">
+            <main role="main" className="container">
                 <div className="row">
-                    <main role="main" className="col-sm-12 ml-sm-auto col-md-12 pt-3">
-                        <div className="row">
-                            Filters:
-                            <ul>
-                                <li>Active</li>
-                                <li>Posted at-least half an hour ago</li>
-                                <li>Is not local</li>
-                            </ul>
-                        </div>
+                    <div className="row">
+                        Filters:
+                        <ul>
+                            <li>Active</li>
+                            <li>Posted at-least half an hour ago</li>
+                            <li>Is not local</li>
+                        </ul>
+                    </div>
+                    <form>
                         <div className="row">
                             {this.state.isCountriesLoaded && <Select
                                 multi={true}
@@ -215,7 +226,24 @@ class Projects extends Component {
                                 onChange={this.selectCountry}
                                 options={this.state.freelancerCountries}
                                 closeOnSelect={true}
+                                placeholder="Countries"
                             />}
+                        </div>
+                        <div className={"row"}>
+                            <fieldset>
+                                <legend>Projects Type</legend>
+                                <CheckboxGroup
+                                    checkboxDepth={2} // This is needed to optimize the checkbox group
+                                    name="project_types"
+                                    value={this.state.projectTypes}
+                                    onChange={this.changedProjectTypes}>
+                                    <label><Checkbox value="fixed"/> Fixed</label>
+                                    <label><Checkbox value="hourly"/> Hourly</label>
+                                    <label><Checkbox value="contests"/> Contest</label>
+                                </CheckboxGroup>
+                            </fieldset>
+                        </div>
+                        <div className="row">
                             <button type="button" className="btn btn-info"
                                     onClick={() => this.loadProjectsFromServer()}>
                                 Search
@@ -235,40 +263,48 @@ class Projects extends Component {
                                            activeClassName={"active"}/>
 
                         </div>
-                        <div className="table-responsive">
-                            <table className="table table-striped">
-                                <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>C</th>
-                                    <th>PROJECT/CONTEST</th>
-                                    <th>BIDS/ENTRIES</th>
-                                    <th>STARTED</th>
-                                    <th>PRICE</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {jobList}
-                                </tbody>
-                            </table>
-                        </div>
-                        <div className="row">
-                            <ReactPaginate previousLabel={"previous"}
-                                           nextLabel={"next"}
-                                           breakLabel={<a href="">...</a>}
-                                           breakClassName={"break-me"}
-                                           pageCount={this.state.pageCount}
-                                           marginPagesDisplayed={2}
-                                           pageRangeDisplayed={5}
-                                           onPageChange={this.handlePageClick}
-                                           containerClassName={"pagination"}
-                                           subContainerClassName={"pages pagination"}
-                                           activeClassName={"active"}/>
+                    </form>
 
-                        </div>
-                    </main>
                 </div>
-            </div>
+
+                <div className="table-responsive">
+                    <table className="table table-striped">
+                        <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>C</th>
+                            <th>PROJECT/CONTEST</th>
+                            <th>BIDS/ENTRIES</th>
+                            <th>STARTED</th>
+                            <th>PRICE</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {jobList}
+                        </tbody>
+                    </table>
+                </div>
+                <div className="row">
+                    <ReactPaginate previousLabel={"previous"}
+                                   nextLabel={"next"}
+                                   breakLabel={<a href="">...</a>}
+                                   breakClassName={"break-me"}
+                                   pageCount={this.state.pageCount}
+                                   marginPagesDisplayed={2}
+                                   pageRangeDisplayed={5}
+                                   onPageChange={this.handlePageClick}
+                                   containerClassName={"pagination"}
+                                   subContainerClassName={"pages pagination"}
+                                   activeClassName={"active"}/>
+
+                </div>
+                <footer className="footer">
+                    <div className="container">
+                        <span className="text-muted"><a href="https://stackoverflow.com/story/itsazzad" target="_blank"
+                                                        rel="noopener noreferrer">Sazzad Hossain Khan</a></span>
+                    </div>
+                </footer>
+            </main>
         );
     }
 }

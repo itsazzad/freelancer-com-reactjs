@@ -10,6 +10,7 @@
     "prettier": "^1.8.2",
     "react": "^16.1.1",
     "react-bootstrap": "^0.31.5",
+    "react-checkbox-group": "^3.3.4",
     "react-dom": "^16.1.1",
     "react-paginate": "^5.0.0",
     "react-router": "^4.2.0",
