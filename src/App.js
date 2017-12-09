@@ -30,6 +30,24 @@ class App extends Component {
     }
 }
 
+function consoleError(text, count) {
+    const consoleError = document.getElementById('console-error');
+    const elm = consoleError.getElementsByClassName(text);
+    if (elm.length) {
+        const counter = elm[0].getElementsByClassName('counter')[0];
+        counter.innerText = parseInt(counter.innerText, 10) + 1;
+    } else {
+        const li = document.createElement("li");
+        li.className = text;
+        if (count) {
+            li.innerHTML = `${text}: <span class="counter">${count}</span>`;
+        } else {
+            li.innerHTML = `${text}: <span class="counter">1</span>`;
+        }
+        consoleError.appendChild(li);
+    }
+}
+
 class Filter {
     constructor(projects) {
         this.projects = projects;
@@ -53,17 +71,17 @@ class Filter {
 
     start(project) {
         if (!this.constructor.isActive(project)) {
-            console.error('closed');
+            consoleError('closed');
             this.invalidEntries++;
             return false;
         }
         if (!this.constructor.isNotLocal(project)) {
-            console.error('local');
+            consoleError('local');
             this.invalidEntries++;
             return false;
         }
         if (!this.constructor.isMaturedEnough(project)) {
-            console.error('new');
+            consoleError('new');
             this.invalidEntries++;
             return false;
         }
@@ -107,7 +125,7 @@ class Projects extends Component {
     };
 
     loadCountries = () => {
-        return axios.all([Request.countries('restcountries'), Request.countries('freelancer')])
+        return axios.all([Request.countries('restcountries'), Request.countries('above-average')])
             .then(axios.spread((countries, freelancerCountries) => {
                 this.setState({
                     isCountriesLoaded: true,
@@ -117,11 +135,13 @@ class Projects extends Component {
                 return freelancerCountries.data.result.countries;
             }))
             .catch((error) => {
-                console.error(error);
+                consoleError(error);
             });
     };
 
     loadProjectsFromServer() {
+        document.getElementById('console-error').innerHTML = null;
+
         let url = `https://www.freelancer.com/api/projects/0.1/projects/active?`;
         if (this.state.projectTypes.includes('fixed')) {
             url += `project_types[]=fixed&`;
@@ -147,7 +167,7 @@ class Projects extends Component {
                     const data = projectsData.data;
                     const pageCount = Math.ceil((data.result.total_count / LIMIT) / 2);
                     let projects = new Filter(data.result.projects);
-                    console.error('invalidEntries: ', projects.invalidEntries);
+                    consoleError('invalidEntries', projects.invalidEntries);
                     projects = projects.projects;
                     projects.sort(function (project0, project1) {
                         const count0 = (project0.entry_count ? project0.entry_count : project0.bid_stats.bid_count);
@@ -162,11 +182,11 @@ class Projects extends Component {
                         users,
                     });
                 } else {
-                    console.error(projectsData.status);
+                    consoleError(projectsData.status);
                 }
             }))
             .catch((error) => {
-                console.error(error);
+                consoleError(error);
             });
     }
 
@@ -233,7 +253,6 @@ class Projects extends Component {
                             <fieldset>
                                 <legend>Projects Type</legend>
                                 <CheckboxGroup
-                                    checkboxDepth={2} // This is needed to optimize the checkbox group
                                     name="project_types"
                                     value={this.state.projectTypes}
                                     onChange={this.changedProjectTypes}>
@@ -250,6 +269,10 @@ class Projects extends Component {
                             </button>
                         </div>
                         <div className="row">
+                            <ul id={"console-error"} style={{ color: 'red' }}>
+                            </ul>
+                        </div>
+                        <div className="row">
                             <ReactPaginate previousLabel={"previous"}
                                            nextLabel={"next"}
                                            breakLabel={<a href="">...</a>}
@@ -264,9 +287,7 @@ class Projects extends Component {
 
                         </div>
                     </form>
-
                 </div>
-
                 <div className="table-responsive">
                     <table className="table table-striped">
                         <thead>
