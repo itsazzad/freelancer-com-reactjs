@@ -162,7 +162,7 @@ class Projects extends Component {
 
         let countries = this.state.selectedCountries;
         const world = countries.filter(function (obj) {
-            return obj.code == 'WORLD';
+            return obj.code === 'WORLD';
         })[0];
 
         if (world) {
@@ -203,6 +203,21 @@ class Projects extends Component {
     }
 
     componentDidMount() {
+        document.addEventListener("keydown", (zEvent) => {
+            console.error(zEvent)
+            if (zEvent.altKey && zEvent.code === "ArrowRight") {
+                const nexts = document.querySelectorAll('.next a');
+                for (let i = 0; i < nexts.length; i++) {
+                    nexts[i].click();
+                }
+            } else if (zEvent.altKey && zEvent.code === "ArrowLeft") {
+                const previouses = document.querySelectorAll('.previous a');
+                for (let i = 0; i < previouses.length; i++) {
+                    previouses[i].click();
+                }
+            }
+        });
+
         this.loadCountries();
     }
 
@@ -285,6 +300,7 @@ class Projects extends Component {
                             </ul>
                         </div>
                         <div className="row">
+                            <p>May use alt/option + left/right arrows for paginating <br/></p>
                             <ReactPaginate previousLabel={"previous"}
                                            nextLabel={"next"}
                                            breakLabel={<a href="">...</a>}
@@ -295,8 +311,8 @@ class Projects extends Component {
                                            onPageChange={this.handlePageClick}
                                            containerClassName={"pagination"}
                                            subContainerClassName={"pages pagination"}
-                                           activeClassName={"active"}/>
-
+                                           activeClassName={"active"}
+                            />
                         </div>
                     </form>
                 </div>
@@ -328,8 +344,8 @@ class Projects extends Component {
                                    onPageChange={this.handlePageClick}
                                    containerClassName={"pagination"}
                                    subContainerClassName={"pages pagination"}
-                                   activeClassName={"active"}/>
-
+                                   activeClassName={"active"}
+                    />
                 </div>
                 <footer className="footer">
                     <div className="container">
