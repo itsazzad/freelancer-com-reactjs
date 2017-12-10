@@ -130,7 +130,10 @@ class Projects extends Component {
                 this.setState({
                     isCountriesLoaded: true,
                     countries: countries.data,
-                    freelancerCountries: freelancerCountries.data.result.countries,
+                    freelancerCountries: [{
+                        "code": "WORLD",
+                        "name": "World",
+                    }, ...freelancerCountries.data.result.countries],
                 });
                 return freelancerCountries.data.result.countries;
             }))
@@ -156,7 +159,16 @@ class Projects extends Component {
         url += `user_details=true&`;
         url += `limit=${LIMIT}&`;
         url += `offset=${this.state.offset}&`;
-        for (let country of this.state.selectedCountries) {
+
+        let countries = this.state.selectedCountries;
+        const world = countries.filter(function (obj) {
+            return obj.code == 'WORLD';
+        })[0];
+
+        if (world) {
+            countries = this.state.freelancerCountries;
+        }
+        for (let country of countries) {
             url += `countries[]=${country.code.toLowerCase()}&`;
         }
 
