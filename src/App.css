@@ -16,3 +16,6 @@ ul.pagination .break a {
   z-index: 9;
 }
 
+a:visited {
+  color: hotpink;
+}
