@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import ReactDOM from 'react-dom';
 import {
     BrowserRouter as Router,
     Route,
@@ -109,14 +110,57 @@ class Projects extends Component {
         this.state = {
             users: {},
             projects: [],
-            offset: 0,
             isCountriesLoaded: false,
             countries: [],
             freelancerCountries: [],
             selectedCountries: [],
             projectTypes: ['fixed', 'hourly', 'contests'],
+            selectWithNBids: 0,
+            offset: 0,
+            updatedOn: Date.now(),
         };
     };
+
+    componentDidMount() {
+        document.addEventListener("keydown", (zEvent) => {
+            if (zEvent.altKey && zEvent.ctrlKey) {
+                if (zEvent.code === "ArrowRight" || zEvent.code === "ArrowLeft") {
+                    if (zEvent.code === "ArrowRight") {
+                        const nexts = document.querySelectorAll('.next a');
+                        for (let i = 0; i < nexts.length; i++) {
+                            nexts[i].click();
+                        }
+                    } else if (zEvent.code === "ArrowLeft") {
+                        const previouses = document.querySelectorAll('.previous a');
+                        for (let i = 0; i < previouses.length; i++) {
+                            previouses[i].click();
+                        }
+                    }
+                    this.setState({
+                        selectWithNBids: 0,
+                    });
+                } else if (zEvent.code === "ArrowUp" || zEvent.code === "ArrowDown") {
+                    const selectedProjects = ReactDOM.findDOMNode(this).getElementsByClassName(`bids_${this.state.selectWithNBids}`);
+                    (function openHref(i) {
+                        setTimeout(function () {
+                            window.open(selectedProjects[i - 1].href, '_blank').focus();
+                            setTimeout(function () {
+                                window.focus();
+                            }, 100);
+                            if (--i) openHref(i);
+                        }, 100)
+                    })(selectedProjects.length);
+                    this.setState({
+                        selectWithNBids: (zEvent.code === "ArrowDown") ?
+                            (this.state.selectWithNBids + 1) :
+                            ((this.state.selectWithNBids > 0) ? (this.state.selectWithNBids - 1) : 0),
+                    });
+                }
+            }
+        });
+
+        this.loadCountries();
+    }
 
     changedProjectTypes = (projectTypes) => {
         this.setState({
@@ -140,6 +184,14 @@ class Projects extends Component {
             .catch((error) => {
                 consoleError(error);
             });
+    };
+
+    searchForProjects() {
+        this.setState({
+            offset: 0,
+            updatedOn: Date.now(),
+        });
+        this.loadProjectsFromServer();
     };
 
     loadProjectsFromServer() {
@@ -202,25 +254,6 @@ class Projects extends Component {
             });
     }
 
-    componentDidMount() {
-        document.addEventListener("keydown", (zEvent) => {
-            console.error(zEvent)
-            if (zEvent.altKey && zEvent.code === "ArrowRight") {
-                const nexts = document.querySelectorAll('.next a');
-                for (let i = 0; i < nexts.length; i++) {
-                    nexts[i].click();
-                }
-            } else if (zEvent.altKey && zEvent.code === "ArrowLeft") {
-                const previouses = document.querySelectorAll('.previous a');
-                for (let i = 0; i < previouses.length; i++) {
-                    previouses[i].click();
-                }
-            }
-        });
-
-        this.loadCountries();
-    }
-
     handlePageClick = (data) => {
         let selected = data.selected;
         let offset = Math.ceil(selected * LIMIT);
@@ -236,14 +269,17 @@ class Projects extends Component {
 
     render() {
         let jobList = this.state.projects.map((jobNode, index) => {
+            const bidOrEntryCount = jobNode.entry_count ? jobNode.entry_count : jobNode.bid_stats.bid_count;
             return (
                 <tr key={jobNode.id}>
                     <td>{index + 1}</td>
                     <td>
                         {this.state.users[jobNode.owner_id].location.country.name}
                     </td>
-                    <td><a href={`https://www.freelancer.com/projects/${jobNode.seo_url}`}>{jobNode.title}</a></td>
-                    <td>{jobNode.entry_count ? jobNode.entry_count : jobNode.bid_stats.bid_count}
+                    <td><a href={`https://www.freelancer.com/projects/${jobNode.seo_url}`}
+                           className={`entries_${jobNode.entry_count} bids_${jobNode.bid_stats.bid_count}`}>{jobNode.title}</a>
+                    </td>
+                    <td>{bidOrEntryCount}
                         {' X '} {jobNode.currency.code} {jobNode.entry_count ? 'ϕ' : parseInt(jobNode.bid_stats.bid_avg, 10)}</td>
                     <td>{(new Date(jobNode.time_submitted * 1000)).toISOString()}</td>
                     <td>{jobNode.currency.code} {jobNode.prize ? jobNode.prize : jobNode.budget.minimum}
@@ -291,7 +327,7 @@ class Projects extends Component {
                         </div>
                         <div className="row">
                             <button type="button" className="btn btn-info"
-                                    onClick={() => this.loadProjectsFromServer()}>
+                                    onClick={() => this.searchForProjects()}>
                                 Search
                             </button>
                         </div>
@@ -312,6 +348,7 @@ class Projects extends Component {
                                            containerClassName={"pagination"}
                                            subContainerClassName={"pages pagination"}
                                            activeClassName={"active"}
+                                           updatedOn={this.state.updatedOn}
                             />
                         </div>
                     </form>
@@ -333,24 +370,12 @@ class Projects extends Component {
                         </tbody>
                     </table>
                 </div>
-                <div className="row">
-                    <ReactPaginate previousLabel={"previous"}
-                                   nextLabel={"next"}
-                                   breakLabel={<a href="">...</a>}
-                                   breakClassName={"break-me"}
-                                   pageCount={this.state.pageCount}
-                                   marginPagesDisplayed={2}
-                                   pageRangeDisplayed={5}
-                                   onPageChange={this.handlePageClick}
-                                   containerClassName={"pagination"}
-                                   subContainerClassName={"pages pagination"}
-                                   activeClassName={"active"}
-                    />
-                </div>
                 <footer className="footer">
                     <div className="container">
-                        <span className="text-muted"><a href="https://stackoverflow.com/story/itsazzad" target="_blank"
-                                                        rel="noopener noreferrer">Sazzad Hossain Khan</a></span>
+                        <span className="text-muted">
+                            <a href="https://stackoverflow.com/story/itsazzad" target="_blank"
+                               rel="noopener noreferrer">Sazzad Hossain Khan</a>
+                        </span>
                     </div>
                 </footer>
             </main>
