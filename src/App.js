@@ -20,7 +20,7 @@ class App extends Component {
         return (
             <Router>
                 <header>
-                    <nav className="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
+                    <nav className="navbar navbar-expand-md navbar-dark fixed-top">
                         <div className="collapse navbar-collapse" id="navbarsExampleDefault">
                             <Route exact path="/" component={Projects}/>
                         </div>
